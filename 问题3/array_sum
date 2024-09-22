@@ -1,0 +1,115 @@
+.file "sum_array.c"
+.option nopic
+.attribute arch, "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0"
+.attribute unaligned_access, 0
+.attribute stack_align, 16
+.text
+.align 1
+
+# 全局定义 sum_array 函数
+.globl sum_array
+.type sum_array, @function
+sum_array:
+    mv a5, a0           # 保存 a0 (数组首地址) 到 a5
+    mv a6, a1           # 保存 a1 (数组长度) 到 a6
+    li a0, 0            # 初始化 a0 为 0，用作存储累加和
+.L1:
+    beqz a6, .L2        # 如果 a6 为 0，跳转到结束标签 .L2
+    lw a7, 0(a5)        # 加载当前数组元素到 a7
+    add a0, a0, a7      # 将 a7 累加到 a0 中
+    addi a5, a5, 4      # 移动到下一个数组元素
+    addi a6, a6, -1     # 数组长度减 1
+    j .L1               # 跳回循环开始
+.L2:
+    ret                 # 返回累加和
+.size sum_array, .-sum_array
+
+.section .rodata.str1.8,"aMS",@progbits,1
+.align 3
+.LC0:
+.string "%d"
+.LC1:
+.string "Sum is: %d\n"
+.section .text.startup,"ax",@progbits
+.align 1
+
+# 全局定义 main 函数
+.globl main
+.type main, @function
+main:
+    addi sp, sp, -56        # 分配栈空间
+    sd ra, 48(sp)           # 保存返回地址
+    sd s3, 40(sp)
+    sd s0, 32(sp)           # 保存寄存器 s0
+    sd s1, 24(sp)           # 保存寄存器 s1
+    sd s2, 16(sp)           # 保存寄存器 s2
+
+    lui s0, %hi(array)      # 加载数组的高地址到 s0
+    addi s0, s0, %lo(array) # 加载数组的低地址到 s0
+
+    lui a0, %hi(.LC0)       # 准备扫描格式字符串
+    addi a0, a0, %lo(.LC0)
+
+    lui s1, %hi(n)       
+    addi a1, s1, %lo(n)
+
+    call __isoc99_scanf     # 调用 scanf 输入数组元素个数
+
+    lw s2, %lo(n)(s1) 
+    
+    # 循环输入数组元素
+                 # 初始化 t0 为 0 (用作循环计数器)
+    mv s3,zero
+    mv s1,s0
+
+.L_input_loop:
+    beq s3, s2, .L_input_end # 如果计数器达到数组大小，结束输入
+    
+    mv a1,s1
+    lui a0, %hi(.LC0)       # 准备扫描格式字符串
+    addi a0, a0, %lo(.LC0)
+    call __isoc99_scanf     
+    addi s1,s1,4           
+    addi s3,s3, 1          # 计数器加 1
+    j .L_input_loop         # 跳回输入循环
+
+.L_input_end:
+    mv a1, s2               # 将元素个数传递到 a1
+    mv a0, s0               # 将数组首地址传递到 a0
+
+    call sum_array          # 调用 sum_array 函数进行求和
+    mv a1, a0              
+
+    lui a0, %hi(.LC1)       # 加载输出格式字符串
+    addi a0, a0, %lo(.LC1)
+
+    call printf             # 输出累加和
+
+    
+    ld ra, 48(sp)           # 恢复返回地址
+    ld s3, 40(sp)
+    ld s0, 32(sp)           # 恢复寄存器 s0
+    ld s1, 24(sp)           # 恢复寄存器 s1
+    ld s2, 16(sp)           # 恢复寄存器 s2
+    addi sp, sp, 56         # 恢复栈指针
+    li a0, 0                # 返回 0
+    jr ra                   # 返回
+
+.size main, .-main
+
+# 定义数组的全局变量
+.globl array
+.section .sbss,"aw",@nobits
+.align 2
+.type array, @object
+.size array, 400          # 定义 400 字节（100 个 4 字节整数）
+array:
+    .zero 400
+
+.type n, @object
+.size n, 4
+n:
+.zero 4
+
+.ident "GCC: () 12.2.0"
+.section .note.GNU-stack,"",@progbits

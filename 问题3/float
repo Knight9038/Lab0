@@ -1,0 +1,89 @@
+    .file "test.c"
+    .option nopic
+    .attribute arch, "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0"
+    .attribute unaligned_access, 0
+    .attribute stack_align, 16
+    .text
+    .align 1
+    .globl add
+    .type add, @function
+add:
+    fadd.d fa0, fa0, fa1    # fa0 = fa0 + fa1 (双精度浮点数相加)
+    ret
+.size add, .-add
+
+.section .rodata.str1.8,"aMS",@progbits,1
+.align 3
+
+.LC0:
+.string "%lf %lf"           # 双精度浮点数输入格式
+
+.align 3
+.LC1:
+.string "sum is: %lf\n"     # 输出和的格式
+
+.align 3
+.LC2:
+.string "first input: %lf\n"  # 输出第一个输入的格式
+
+.align 3
+.LC3:
+.string "second input: %lf\n" # 输出第二个输入的格式
+
+.section .text.startup,"ax",@progbits
+.align 1
+.globl main
+.type main, @function
+main:
+    addi sp,sp,-32
+    sd s0,16(sp)
+    sd s1,8(sp)
+    sd ra,24(sp)
+
+    lui s0,%hi(a)
+    lui s1,%hi(b)
+
+    lui a0,%hi(.LC0)
+    addi a2,s1,%lo(b)
+    addi a1,s0,%lo(a)
+    addi a0,a0,%lo(.LC0)
+
+    call __isoc99_scanf     # 使用 scanf 输入两个双精度浮点数
+
+    fld fa1,%lo(b)(s1)      # 从 b 加载双精度浮点数
+    fld fa0,%lo(a)(s0)      # 从 a 加载双精度浮点数
+
+    call add                # 调用 add 函数，相加 fa0 和 fa1
+    # 输出相加的结果
+    fmv.x.d a1, fa0         # 将相加结果从双精度浮点寄存器 fa0 转换到整数寄存器 a1
+    lui a0,%hi(.LC1)        # 加载格式字符串到 a0
+    addi a0,a0,%lo(.LC1)
+    call printf             # 打印相加结果 (使用 a0 和 a1)
+
+    ld ra,24(sp)
+    ld s0,16(sp)
+    ld s1,8(sp)
+
+    li a0,0
+    addi sp,sp,32
+    jr ra
+
+.size main, .-main
+
+.globl b
+.globl a
+
+.section .sbss,"aw",@nobits
+.align 3
+.type b, @object
+.size b, 8
+b:
+.zero 8
+
+.type a, @object
+.size a, 8
+a:
+.zero 8
+
+.ident "GCC: () 12.2.0"
+.section .note.GNU-stack,"",@progbits
